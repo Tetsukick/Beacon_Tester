@@ -16,10 +16,19 @@ class BeaconSearchPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final beaconBloc = Provider.of<BeaconBloc>(context);
+    final textBox = TextBox();
     return new Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.grey[50],
           centerTitle: true,
+          title: textBox,
+          leading: IconButton(
+            icon: Icon(Icons.search),
+            color: Colors.grey,
+            onPressed: () {
+              beaconBloc.changeUUIDAction.add(_textBoxState._text);
+            },
+          ),
           actions: <Widget>[
             StreamBuilder<BluetoothState>(
               builder: (context, snapshot) {
@@ -107,6 +116,44 @@ class BeaconSearchPage extends StatelessWidget {
             }
           },
       )
+    );
+  }
+}
+
+_TextBoxState _textBoxState = _TextBoxState();
+
+class TextBox extends StatefulWidget {
+  @override
+  _TextBoxState createState() => _textBoxState;
+}
+
+class _TextBoxState extends State<TextBox> {
+  String _text;
+  TextEditingController _textEditingController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textEditingController = new TextEditingController(text: '5A5EA2C9-8E7A-435D-901F-FBD52767DD60'); // <- こんな感じ
+  }
+
+  void _handleText(String e) {
+    setState(() {
+      _text = e;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.centerLeft,
+      color: Colors.white,
+      child: TextField(
+        controller: _textEditingController,
+        decoration:
+        InputDecoration(border: InputBorder.none, hintText: 'Search'),
+        onChanged: _handleText,
+      ),
     );
   }
 }

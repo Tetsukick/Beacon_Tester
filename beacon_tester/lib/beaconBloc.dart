@@ -12,6 +12,10 @@ class BeaconBloc with WidgetsBindingObserver {
   final _lifeCycleActionController = BehaviorSubject<bool>();
   Sink<void> get changeLifeCycleAction => _lifeCycleActionController.sink;
 
+  final _UUIDTextFieldController = BehaviorSubject<String>();
+  Stream<String> get uuid => _UUIDTextFieldController.stream;
+  StreamSink<String> get changeUUIDAction => _UUIDTextFieldController.sink;
+
   //output
   final _authorizationStatusController = BehaviorSubject<bool>();
   Stream<bool> get authorizationStatus => _authorizationStatusController.stream;
@@ -22,24 +26,43 @@ class BeaconBloc with WidgetsBindingObserver {
   final _bluetoothEnabledController = BehaviorSubject<bool>();
   Stream<bool> get bluetoothEnabled => _bluetoothEnabledController.stream;
 
+//  final _UUIDController = BehaviorSubject<String>();
+//  Stream<String> get uuid => _UUIDController.stream;
+
   final _beaconsController = BehaviorSubject<List<Beacon>>();
   Stream<List<Beacon>> get beacons => _beaconsController.stream;
   
   static final Map<String, dynamic> _items = <String, dynamic>{};
   
-  static final StreamController<BluetoothState> streamController = StreamController();
-  static StreamSubscription<BluetoothState> _streamBluetooth;
-  static StreamSubscription<RangingResult> _streamRanging;
-  static final _regionBeacons = <Region, List<Beacon>>{};
-  final _beacons = <Beacon>[];
+  final StreamController<BluetoothState> streamController = StreamController();
+  StreamSubscription<BluetoothState> _streamBluetooth;
+  StreamSubscription<RangingResult> _streamRanging;
+  Map<Region, List<Beacon>> _regionBeacons = <Region, List<Beacon>>{};
+  List<Beacon> _beacons = <Beacon>[];
   bool authorizationStatusOk = false;
   bool internalLocationServiceEnabled = false;
   bool internalBluetoothEnabled = false;
+  String _proximityUUID = '';
 
   BeaconBloc() {
     WidgetsBinding.instance.addObserver(this);
 
-    listeningState();
+    uuid.listen((text) async {
+      print('text: ' + text);
+      _proximityUUID = text;
+      _beacons.clear();
+      _regionBeacons = <Region, List<Beacon>>{};
+      _beaconsController.sink.add(_beacons);
+      if (_streamRanging != null) {
+        _streamRanging.cancel();
+        _streamRanging = null;
+      }
+
+      await checkAllRequirements();
+      if (authorizationStatusOk && internalLocationServiceEnabled && internalBluetoothEnabled) {
+        await initScanBeacon();
+      }
+    });
   }
 
   @override
@@ -51,7 +74,7 @@ class BeaconBloc with WidgetsBindingObserver {
       }
       await checkAllRequirements();
       if (authorizationStatusOk && internalLocationServiceEnabled && internalBluetoothEnabled) {
-        await initScanBeacon();
+//        await initScanBeacon();
       } else {
         await pauseScanBeacon();
         await checkAllRequirements();
@@ -104,10 +127,11 @@ class BeaconBloc with WidgetsBindingObserver {
     }
     print('scan status is OK');
 
-    final regions = <Region>[
+    print('uuid: ' + _proximityUUID);
+    var regions = <Region>[
       Region(
         identifier: 'Cubeacon',
-        proximityUUID: '5A5EA2C9-8E7A-435D-901F-FBD52767DD60',
+        proximityUUID: _proximityUUID,
       ),
     ];
 
@@ -119,6 +143,7 @@ class BeaconBloc with WidgetsBindingObserver {
     }
 
     print('start ranging');
+    print(regions);
     _streamRanging =
         flutterBeacon.ranging(regions).listen((RangingResult result) {
           print(result);
